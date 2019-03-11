@@ -26,7 +26,7 @@ class AnalyzeContinuously extends AnalyzeBase {
 
   String analysisTarget;
   bool firstAnalysis = true;
-  Set<String> analyzedPaths = Set<String>();
+  Set<String> analyzedPaths = <String>{};
   Map<String, List<AnalysisError>> analysisErrors = <String, List<AnalysisError>>{};
   Stopwatch analysisTimer;
   int lastErrorCount = 0;
@@ -74,11 +74,12 @@ class AnalyzeContinuously extends AnalyzeBase {
       analysisStatus?.cancel();
       if (!firstAnalysis)
         printStatus('\n');
-      analysisStatus = logger.startProgress('Analyzing $analysisTarget...');
+      analysisStatus = logger.startProgress('Analyzing $analysisTarget...', timeout: kSlowOperation);
       analyzedPaths.clear();
       analysisTimer = Stopwatch()..start();
     } else {
       analysisStatus?.stop();
+      analysisStatus = null;
       analysisTimer.stop();
 
       logger.printStatus(terminal.clearScreen(), newline: false);

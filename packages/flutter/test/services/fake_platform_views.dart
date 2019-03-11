@@ -20,7 +20,7 @@ class FakeAndroidPlatformViewsController {
 
   final Map<int, List<FakeAndroidMotionEvent>> motionEvents = <int, List<FakeAndroidMotionEvent>>{};
 
-  final Set<String> _registeredViewTypes = Set<String>();
+  final Set<String> _registeredViewTypes = <String>{};
 
   int _textureCounter = 0;
 
@@ -153,14 +153,17 @@ class FakeIosPlatformViewsController {
   Iterable<FakeUiKitView> get views => _views.values;
   final Map<int, FakeUiKitView> _views = <int, FakeUiKitView>{};
 
-  final Set<String> _registeredViewTypes = Set<String>();
+  final Set<String> _registeredViewTypes = <String>{};
 
   // When this completer is non null, the 'create' method channel call will be
   // delayed until it completes.
   Completer<void> creationDelay;
 
-  // Maps a view id to the number of gestures it accepted so fat.
+  // Maps a view id to the number of gestures it accepted so far.
   final Map<int, int> gesturesAccepted = <int, int>{};
+
+  // Maps a view id to the number of gestures it rejected so far.
+  final Map<int, int> gesturesRejected = <int, int>{};
 
   void registerViewType(String viewType) {
     _registeredViewTypes.add(viewType);
@@ -174,6 +177,8 @@ class FakeIosPlatformViewsController {
         return _dispose(call);
       case 'acceptGesture':
         return _acceptGesture(call);
+      case 'rejectGesture':
+        return _rejectGesture(call);
     }
     return Future<dynamic>.sync(() => null);
   }
@@ -202,6 +207,7 @@ class FakeIosPlatformViewsController {
 
     _views[id] = FakeUiKitView(id, viewType, creationParams);
     gesturesAccepted[id] = 0;
+    gesturesRejected[id] = 0;
     return Future<int>.sync(() => null);
   }
 
@@ -209,6 +215,13 @@ class FakeIosPlatformViewsController {
     final Map<dynamic, dynamic> args = call.arguments;
     final int id = args['id'];
     gesturesAccepted[id] += 1;
+    return Future<int>.sync(() => null);
+  }
+
+  Future<dynamic> _rejectGesture(MethodCall call) async {
+    final Map<dynamic, dynamic> args = call.arguments;
+    final int id = args['id'];
+    gesturesRejected[id] += 1;
     return Future<int>.sync(() => null);
   }
 
