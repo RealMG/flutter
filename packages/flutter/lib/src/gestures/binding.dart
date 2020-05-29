@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,6 +14,7 @@ import 'debug.dart';
 import 'events.dart';
 import 'hit_test.dart';
 import 'pointer_router.dart';
+import 'pointer_signal_resolver.dart';
 
 /// A binding for the gesture subsystem.
 ///
@@ -87,7 +88,7 @@ mixin GestureBinding on BindingBase implements HitTestable, HitTestDispatcher, H
 
   /// Dispatch a [PointerCancelEvent] for the given pointer soon.
   ///
-  /// The pointer event will be dispatch before the next pointer event and
+  /// The pointer event will be dispatched before the next pointer event and
   /// before the end of the microtask but not within this function call.
   void cancelPointer(int pointer) {
     if (_pendingPointerEvents.isEmpty && !locked)
@@ -108,6 +109,10 @@ mixin GestureBinding on BindingBase implements HitTestable, HitTestDispatcher, H
   /// pointer events.
   final GestureArenaManager gestureArena = GestureArenaManager();
 
+  /// The resolver used for determining which widget handles a pointer
+  /// signal event.
+  final PointerSignalResolver pointerSignalResolver = PointerSignalResolver();
+
   /// State for all pointers which are currently down.
   ///
   /// The state of hovering pointers is not tracked because that would require
@@ -117,11 +122,13 @@ mixin GestureBinding on BindingBase implements HitTestable, HitTestDispatcher, H
   void _handlePointerEvent(PointerEvent event) {
     assert(!locked);
     HitTestResult hitTestResult;
-    if (event is PointerDownEvent) {
+    if (event is PointerDownEvent || event is PointerSignalEvent) {
       assert(!_hitTests.containsKey(event.pointer));
       hitTestResult = HitTestResult();
       hitTest(hitTestResult, event.position);
-      _hitTests[event.pointer] = hitTestResult;
+      if (event is PointerDownEvent) {
+        _hitTests[event.pointer] = hitTestResult;
+      }
       assert(() {
         if (debugPrintHitTestResults)
           debugPrint('$event: $hitTestResult');
@@ -176,33 +183,30 @@ mixin GestureBinding on BindingBase implements HitTestable, HitTestDispatcher, H
           exception: exception,
           stack: stack,
           library: 'gesture library',
-          context: 'while dispatching a non-hit-tested pointer event',
+          context: ErrorDescription('while dispatching a non-hit-tested pointer event'),
           event: event,
           hitTestEntry: null,
-          informationCollector: (StringBuffer information) {
-            information.writeln('Event:');
-            information.writeln('  $event');
+          informationCollector: () sync* {
+            yield DiagnosticsProperty<PointerEvent>('Event', event, style: DiagnosticsTreeStyle.errorProperty);
           },
         ));
       }
       return;
     }
-    for (HitTestEntry entry in hitTestResult.path) {
+    for (final HitTestEntry entry in hitTestResult.path) {
       try {
-        entry.target.handleEvent(event, entry);
+        entry.target.handleEvent(event.transformed(entry.transform), entry);
       } catch (exception, stack) {
         FlutterError.reportError(FlutterErrorDetailsForPointerEventDispatcher(
           exception: exception,
           stack: stack,
           library: 'gesture library',
-          context: 'while dispatching a pointer event',
+          context: ErrorDescription('while dispatching a pointer event'),
           event: event,
           hitTestEntry: entry,
-          informationCollector: (StringBuffer information) {
-            information.writeln('Event:');
-            information.writeln('  $event');
-            information.writeln('Target:');
-            information.write('  ${entry.target}');
+          informationCollector: () sync* {
+            yield DiagnosticsProperty<PointerEvent>('Event', event, style: DiagnosticsTreeStyle.errorProperty);
+            yield DiagnosticsProperty<HitTestTarget>('Target', entry.target, style: DiagnosticsTreeStyle.errorProperty);
           },
         ));
       }
@@ -216,6 +220,8 @@ mixin GestureBinding on BindingBase implements HitTestable, HitTestDispatcher, H
       gestureArena.close(event.pointer);
     } else if (event is PointerUpEvent) {
       gestureArena.sweep(event.pointer);
+    } else if (event is PointerSignalEvent) {
+      pointerSignalResolver.resolve(event);
     }
   }
 }
@@ -223,8 +229,10 @@ mixin GestureBinding on BindingBase implements HitTestable, HitTestDispatcher, H
 /// Variant of [FlutterErrorDetails] with extra fields for the gesture
 /// library's binding's pointer event dispatcher ([GestureBinding.dispatchEvent]).
 ///
-/// See also [FlutterErrorDetailsForPointerRouter], which is also used by the
-/// gesture library.
+/// See also:
+///
+///  * [FlutterErrorDetailsForPointerRouter], which is also used by the
+///    gesture library.
 class FlutterErrorDetailsForPointerEventDispatcher extends FlutterErrorDetails {
   /// Creates a [FlutterErrorDetailsForPointerEventDispatcher] object with the given
   /// arguments setting the object's properties.
@@ -235,7 +243,7 @@ class FlutterErrorDetailsForPointerEventDispatcher extends FlutterErrorDetails {
     dynamic exception,
     StackTrace stack,
     String library,
-    String context,
+    DiagnosticsNode context,
     this.event,
     this.hitTestEntry,
     InformationCollector informationCollector,
@@ -246,7 +254,7 @@ class FlutterErrorDetailsForPointerEventDispatcher extends FlutterErrorDetails {
     library: library,
     context: context,
     informationCollector: informationCollector,
-    silent: silent
+    silent: silent,
   );
 
   /// The pointer event that was being routed when the exception was raised.

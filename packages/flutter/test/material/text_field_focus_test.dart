@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,6 +6,49 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 
 void main() {
+  testWidgets('Dialog interaction', (WidgetTester tester) async {
+    expect(tester.testTextInput.isVisible, isFalse);
+
+    final FocusNode focusNode = FocusNode(debugLabel: 'Editable Text Node');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Material(
+          child: Center(
+            child: TextField(
+              focusNode: focusNode,
+              autofocus: true,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.testTextInput.isVisible, isTrue);
+    expect(focusNode.hasPrimaryFocus, isTrue);
+
+    final BuildContext context = tester.element(find.byType(TextField));
+
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) => const SimpleDialog(title: Text('Dialog')),
+    );
+
+    await tester.pump();
+
+    expect(tester.testTextInput.isVisible, isFalse);
+
+    Navigator.of(tester.element(find.text('Dialog'))).pop();
+    await tester.pump();
+
+    expect(focusNode.hasPrimaryFocus, isTrue);
+    expect(tester.testTextInput.isVisible, isTrue);
+
+    await tester.pumpWidget(Container());
+
+    expect(tester.testTextInput.isVisible, isFalse);
+  });
+
   testWidgets('Request focus shows keyboard', (WidgetTester tester) async {
     final FocusNode focusNode = FocusNode();
 
@@ -76,49 +119,6 @@ void main() {
     expect(tester.testTextInput.isVisible, isTrue);
 
     tester.testTextInput.hide();
-
-    expect(tester.testTextInput.isVisible, isFalse);
-
-    await tester.tap(find.byType(TextField));
-    await tester.idle();
-
-    expect(tester.testTextInput.isVisible, isTrue);
-
-    await tester.pumpWidget(Container());
-
-    expect(tester.testTextInput.isVisible, isFalse);
-  });
-
-  testWidgets('Dialog interaction', (WidgetTester tester) async {
-    expect(tester.testTextInput.isVisible, isFalse);
-
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Material(
-          child: Center(
-            child: TextField(
-              autofocus: true,
-            ),
-          ),
-        ),
-      ),
-    );
-
-    expect(tester.testTextInput.isVisible, isTrue);
-
-    final BuildContext context = tester.element(find.byType(TextField));
-
-    showDialog<void>(
-      context: context,
-      builder: (BuildContext context) => const SimpleDialog(title: Text('Dialog')),
-    );
-
-    await tester.pump();
-
-    expect(tester.testTextInput.isVisible, isFalse);
-
-    Navigator.of(tester.element(find.text('Dialog'))).pop();
-    await tester.pump();
 
     expect(tester.testTextInput.isVisible, isFalse);
 

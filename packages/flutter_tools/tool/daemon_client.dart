@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -27,7 +27,7 @@ Future<void> main() async {
     .transform<String>(utf8.decoder)
     .transform<String>(const LineSplitter())
     .listen((String line) => print('<== $line'));
-  daemon.stderr.listen((dynamic data) => stderr.add(data));
+  daemon.stderr.listen(stderr.add);
 
   stdout.write('> ');
   stdin.transform<String>(utf8.decoder).transform<String>(const LineSplitter()).listen((String line) {
@@ -40,7 +40,7 @@ Future<void> main() async {
     } else if (words.first == 'start') {
       _send(<String, dynamic>{
         'method': 'app.start',
-        'params': <String, dynamic> {
+        'params': <String, dynamic>{
           'deviceId': words[1],
           'projectDirectory': words[2],
           'launchMode': words[3],
@@ -50,7 +50,7 @@ Future<void> main() async {
       if (words.length > 1) {
         _send(<String, dynamic>{
           'method': 'app.stop',
-          'params': <String, dynamic> { 'appId': words[1] },
+          'params': <String, dynamic>{'appId': words[1]},
         });
       } else {
         _send(<String, dynamic>{'method': 'app.stop'});
@@ -59,7 +59,7 @@ Future<void> main() async {
       if (words.length > 1) {
         _send(<String, dynamic>{
           'method': 'app.restart',
-          'params': <String, dynamic> { 'appId': words[1] },
+          'params': <String, dynamic>{'appId': words[1]},
         });
       } else {
         _send(<String, dynamic>{'method': 'app.restart'});

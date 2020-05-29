@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,11 +10,9 @@ import 'package:flutter/widgets.dart';
 import 'material.dart';
 import 'theme.dart';
 
-const double _kLinearProgressIndicatorHeight = 6.0;
 const double _kMinCircularProgressIndicatorSize = 36.0;
 const int _kIndeterminateLinearDuration = 1800;
-
-// TODO(hansmuller): implement the support for buffer indicator
+const int _kIndeterminateCircularDuration = 1333 * 2222;
 
 /// A base class for material design progress indicators.
 ///
@@ -28,11 +26,11 @@ const int _kIndeterminateLinearDuration = 1800;
 abstract class ProgressIndicator extends StatefulWidget {
   /// Creates a progress indicator.
   ///
-  /// The [value] argument can be either null (corresponding to an indeterminate
-  /// progress indicator) or non-null (corresponding to a determinate progress
-  /// indicator). See [value] for details.
+  /// {@template flutter.material.progressIndicator.parameters}
+  /// The [value] argument can either be null for an indeterminate
+  /// progress indicator, or non-null for a determinate progress
+  /// indicator.
   ///
-  /// {@template flutter.material.progressIndicator.semantics}
   /// ## Accessibility
   ///
   /// The [semanticsLabel] can be used to identify the purpose of this progress
@@ -48,21 +46,23 @@ abstract class ProgressIndicator extends StatefulWidget {
     this.semanticsValue,
   }) : super(key: key);
 
-  /// If non-null, the value of this progress indicator with 0.0 corresponding
-  /// to no progress having been made and 1.0 corresponding to all the progress
-  /// having been made.
+  /// If non-null, the value of this progress indicator.
+  ///
+  /// A value of 0.0 means no progress and 1.0 means that progress is complete.
   ///
   /// If null, this progress indicator is indeterminate, which means the
-  /// indicator displays a predetermined animation that does not indicator how
+  /// indicator displays a predetermined animation that does not indicate how
   /// much actual progress is being made.
   final double value;
 
-  /// The progress indicator's background color. The current theme's
-  /// [ThemeData.backgroundColor] by default.
+  /// The progress indicator's background color.
+  ///
+  /// The current theme's [ThemeData.backgroundColor] by default.
   final Color backgroundColor;
 
-  /// The indicator's color is the animation's value. To specify a constant
-  /// color use: `new AlwaysStoppedAnimation<Color>(color)`.
+  /// The progress indicator's color as an animated value.
+  ///
+  /// To specify a constant color use: `AlwaysStoppedAnimation<Color>(color)`.
   ///
   /// If null, the progress indicator is rendered with the current theme's
   /// [ThemeData.accentColor].
@@ -179,7 +179,7 @@ class _LinearProgressIndicatorPainter extends CustomPainter {
     }
 
     if (value != null) {
-      drawBar(0.0, value.clamp(0.0, 1.0) * size.width);
+      drawBar(0.0, value.clamp(0.0, 1.0) * size.width as double);
     } else {
       final double x1 = size.width * line1Tail.transform(animationValue);
       final double width1 = size.width * line1Head.transform(animationValue) - x1;
@@ -216,33 +216,44 @@ class _LinearProgressIndicatorPainter extends CustomPainter {
 ///    made without indicating how much progress remains. To create an
 ///    indeterminate progress indicator, use a null [value].
 ///
+/// The indicator line is displayed with [valueColor], an animated value. To
+/// specify a constant color value use: `AlwaysStoppedAnimation<Color>(color)`.
+///
+/// The minimum height of the indicator can be specified using [minHeight].
+/// The indicator can be made taller by wrapping the widget with a [SizedBox].
+///
 /// See also:
 ///
-///  * [CircularProgressIndicator]
+///  * [CircularProgressIndicator], which shows progress along a circular arc.
+///  * [RefreshIndicator], which automatically displays a [CircularProgressIndicator]
+///    when the underlying vertical scrollable is overscrolled.
 ///  * <https://material.io/design/components/progress-indicators.html#linear-progress-indicators>
 class LinearProgressIndicator extends ProgressIndicator {
   /// Creates a linear progress indicator.
   ///
-  /// The [value] argument can be either null (corresponding to an indeterminate
-  /// progress indicator) or non-null (corresponding to a determinate progress
-  /// indicator). See [value] for details.
-  ///
-  /// {@macro flutter.material.progressIndicator.semantics}
+  /// {@macro flutter.material.progressIndicator.parameters}
   const LinearProgressIndicator({
     Key key,
     double value,
     Color backgroundColor,
     Animation<Color> valueColor,
+    this.minHeight,
     String semanticsLabel,
     String semanticsValue,
-  }) : super(
-         key: key,
-         value: value,
-         backgroundColor: backgroundColor,
-         valueColor: valueColor,
-         semanticsLabel: semanticsLabel,
-         semanticsValue: semanticsValue,
-       );
+  }) : assert(minHeight == null || minHeight > 0),
+       super(
+        key: key,
+        value: value,
+        backgroundColor: backgroundColor,
+        valueColor: valueColor,
+        semanticsLabel: semanticsLabel,
+        semanticsValue: semanticsValue,
+      );
+
+  /// The minimum height of the line used to draw the indicator.
+  ///
+  /// This defaults to 4dp.
+  final double minHeight;
 
   @override
   _LinearProgressIndicatorState createState() => _LinearProgressIndicatorState();
@@ -281,9 +292,9 @@ class _LinearProgressIndicatorState extends State<LinearProgressIndicator> with 
     return widget._buildSemanticsWrapper(
       context: context,
       child: Container(
-        constraints: const BoxConstraints(
+        constraints: BoxConstraints(
           minWidth: double.infinity,
-          minHeight: _kLinearProgressIndicatorHeight,
+          minHeight: widget.minHeight ?? 4.0,
         ),
         child: CustomPaint(
           painter: _LinearProgressIndicatorPainter(
@@ -316,25 +327,27 @@ class _LinearProgressIndicatorState extends State<LinearProgressIndicator> with 
 
 class _CircularProgressIndicatorPainter extends CustomPainter {
   _CircularProgressIndicatorPainter({
+    this.backgroundColor,
     this.valueColor,
     this.value,
     this.headValue,
     this.tailValue,
-    this.stepValue,
+    this.offsetValue,
     this.rotationValue,
     this.strokeWidth,
   }) : arcStart = value != null
          ? _startAngle
-         : _startAngle + tailValue * 3 / 2 * math.pi + rotationValue * math.pi * 1.7 - stepValue * 0.8 * math.pi,
+         : _startAngle + tailValue * 3 / 2 * math.pi + rotationValue * math.pi * 2.0 + offsetValue * 0.5 * math.pi,
        arcSweep = value != null
-         ? value.clamp(0.0, 1.0) * _sweep
+         ? (value.clamp(0.0, 1.0) as double) * _sweep
          : math.max(headValue * 3 / 2 * math.pi - tailValue * 3 / 2 * math.pi, _epsilon);
 
+  final Color backgroundColor;
   final Color valueColor;
   final double value;
   final double headValue;
   final double tailValue;
-  final int stepValue;
+  final double offsetValue;
   final double rotationValue;
   final double strokeWidth;
   final double arcStart;
@@ -352,6 +365,13 @@ class _CircularProgressIndicatorPainter extends CustomPainter {
       ..color = valueColor
       ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke;
+    if (backgroundColor != null) {
+      final Paint backgroundPaint = Paint()
+        ..color = backgroundColor
+        ..strokeWidth = strokeWidth
+        ..style = PaintingStyle.stroke;
+      canvas.drawArc(Offset.zero & size, 0, _sweep, false, backgroundPaint);
+    }
 
     if (value == null) // Indeterminate
       paint.strokeCap = StrokeCap.square;
@@ -361,11 +381,12 @@ class _CircularProgressIndicatorPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_CircularProgressIndicatorPainter oldPainter) {
-    return oldPainter.valueColor != valueColor
+    return oldPainter.backgroundColor != backgroundColor
+        || oldPainter.valueColor != valueColor
         || oldPainter.value != value
         || oldPainter.headValue != headValue
         || oldPainter.tailValue != tailValue
-        || oldPainter.stepValue != stepValue
+        || oldPainter.offsetValue != offsetValue
         || oldPainter.rotationValue != rotationValue
         || oldPainter.strokeWidth != strokeWidth;
   }
@@ -386,18 +407,19 @@ class _CircularProgressIndicatorPainter extends CustomPainter {
 ///    made without indicating how much progress remains. To create an
 ///    indeterminate progress indicator, use a null [value].
 ///
+/// The indicator arc is displayed with [valueColor], an animated value. To
+/// specify a constant color use: `AlwaysStoppedAnimation<Color>(color)`.
+///
 /// See also:
 ///
-///  * [LinearProgressIndicator]
+///  * [LinearProgressIndicator], which displays progress along a line.
+///  * [RefreshIndicator], which automatically displays a [CircularProgressIndicator]
+///    when the underlying vertical scrollable is overscrolled.
 ///  * <https://material.io/design/components/progress-indicators.html#circular-progress-indicators>
 class CircularProgressIndicator extends ProgressIndicator {
   /// Creates a circular progress indicator.
   ///
-  /// The [value] argument can be either null (corresponding to an indeterminate
-  /// progress indicator) or non-null (corresponding to a determinate progress
-  /// indicator). See [value] for details.
-  ///
-  /// {@macro flutter.material.progressIndicator.semantics}
+  /// {@macro flutter.material.progressIndicator.parameters}
   const CircularProgressIndicator({
     Key key,
     double value,
@@ -422,31 +444,30 @@ class CircularProgressIndicator extends ProgressIndicator {
   _CircularProgressIndicatorState createState() => _CircularProgressIndicatorState();
 }
 
-// Tweens used by circular progress indicator
-final Animatable<double> _kStrokeHeadTween = CurveTween(
-  curve: const Interval(0.0, 0.5, curve: Curves.fastOutSlowIn),
-).chain(CurveTween(
-  curve: const SawTooth(5),
-));
-
-final Animatable<double> _kStrokeTailTween = CurveTween(
-  curve: const Interval(0.5, 1.0, curve: Curves.fastOutSlowIn),
-).chain(CurveTween(
-  curve: const SawTooth(5),
-));
-
-final Animatable<int> _kStepTween = StepTween(begin: 0, end: 5);
-
-final Animatable<double> _kRotationTween = CurveTween(curve: const SawTooth(5));
-
 class _CircularProgressIndicatorState extends State<CircularProgressIndicator> with SingleTickerProviderStateMixin {
+  static const int _pathCount = _kIndeterminateCircularDuration ~/ 1333;
+  static const int _rotationCount = _kIndeterminateCircularDuration ~/ 2222;
+
+  static final Animatable<double> _strokeHeadTween = CurveTween(
+    curve: const Interval(0.0, 0.5, curve: Curves.fastOutSlowIn),
+  ).chain(CurveTween(
+    curve: const SawTooth(_pathCount),
+  ));
+  static final Animatable<double> _strokeTailTween = CurveTween(
+    curve: const Interval(0.5, 1.0, curve: Curves.fastOutSlowIn),
+  ).chain(CurveTween(
+    curve: const SawTooth(_pathCount),
+  ));
+  static final Animatable<double> _offsetTween = CurveTween(curve: const SawTooth(_pathCount));
+  static final Animatable<double> _rotationTween = CurveTween(curve: const SawTooth(_rotationCount));
+
   AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(seconds: 5),
+      duration: const Duration(milliseconds: _kIndeterminateCircularDuration),
       vsync: this,
     );
     if (widget.value == null)
@@ -468,7 +489,7 @@ class _CircularProgressIndicatorState extends State<CircularProgressIndicator> w
     super.dispose();
   }
 
-  Widget _buildIndicator(BuildContext context, double headValue, double tailValue, int stepValue, double rotationValue) {
+  Widget _buildIndicator(BuildContext context, double headValue, double tailValue, double offsetValue, double rotationValue) {
     return widget._buildSemanticsWrapper(
       context: context,
       child: Container(
@@ -478,11 +499,12 @@ class _CircularProgressIndicatorState extends State<CircularProgressIndicator> w
         ),
         child: CustomPaint(
           painter: _CircularProgressIndicatorPainter(
+            backgroundColor: widget.backgroundColor,
             valueColor: widget._getValueColor(context),
             value: widget.value, // may be null
             headValue: headValue, // remaining arguments are ignored if widget.value is not null
             tailValue: tailValue,
-            stepValue: stepValue,
+            offsetValue: offsetValue,
             rotationValue: rotationValue,
             strokeWidth: widget.strokeWidth,
           ),
@@ -497,10 +519,10 @@ class _CircularProgressIndicatorState extends State<CircularProgressIndicator> w
       builder: (BuildContext context, Widget child) {
         return _buildIndicator(
           context,
-          _kStrokeHeadTween.evaluate(_controller),
-          _kStrokeTailTween.evaluate(_controller),
-          _kStepTween.evaluate(_controller),
-          _kRotationTween.evaluate(_controller),
+          _strokeHeadTween.evaluate(_controller),
+          _strokeTailTween.evaluate(_controller),
+          _offsetTween.evaluate(_controller),
+          _rotationTween.evaluate(_controller),
         );
       },
     );
@@ -520,7 +542,7 @@ class _RefreshProgressIndicatorPainter extends _CircularProgressIndicatorPainter
     double value,
     double headValue,
     double tailValue,
-    int stepValue,
+    double offsetValue,
     double rotationValue,
     double strokeWidth,
     this.arrowheadScale,
@@ -529,7 +551,7 @@ class _RefreshProgressIndicatorPainter extends _CircularProgressIndicatorPainter
     value: value,
     headValue: headValue,
     tailValue: tailValue,
-    stepValue: stepValue,
+    offsetValue: offsetValue,
     rotationValue: rotationValue,
     strokeWidth: strokeWidth,
   );
@@ -577,16 +599,20 @@ class _RefreshProgressIndicatorPainter extends _CircularProgressIndicatorPainter
 /// a complete implementation of swipe-to-refresh driven by a [Scrollable]
 /// widget.
 ///
+/// The indicator arc is displayed with [valueColor], an animated value. To
+/// specify a constant color use: `AlwaysStoppedAnimation<Color>(color)`.
+///
 /// See also:
 ///
-///  * [RefreshIndicator]
+///  * [RefreshIndicator], which automatically displays a [CircularProgressIndicator]
+///    when the underlying vertical scrollable is overscrolled.
 class RefreshProgressIndicator extends CircularProgressIndicator {
   /// Creates a refresh progress indicator.
   ///
   /// Rather than creating a refresh progress indicator directly, consider using
   /// a [RefreshIndicator] together with a [Scrollable] widget.
   ///
-  /// {@macro flutter.material.progressIndicator.semantics}
+  /// {@macro flutter.material.progressIndicator.parameters}
   const RefreshProgressIndicator({
     Key key,
     double value,
@@ -619,15 +645,15 @@ class _RefreshProgressIndicatorState extends _CircularProgressIndicatorState {
   @override
   Widget build(BuildContext context) {
     if (widget.value != null)
-      _controller.value = widget.value / 10.0;
+      _controller.value = widget.value * (1333 / 2 / _kIndeterminateCircularDuration);
     else if (!_controller.isAnimating)
       _controller.repeat();
     return _buildAnimation();
   }
 
   @override
-  Widget _buildIndicator(BuildContext context, double headValue, double tailValue, int stepValue, double rotationValue) {
-    final double arrowheadScale = widget.value == null ? 0.0 : (widget.value * 2.0).clamp(0.0, 1.0);
+  Widget _buildIndicator(BuildContext context, double headValue, double tailValue, double offsetValue, double rotationValue) {
+    final double arrowheadScale = widget.value == null ? 0.0 : ((widget.value * 2.0).clamp(0.0, 1.0) as double);
     return widget._buildSemanticsWrapper(
       context: context,
       child: Container(
@@ -646,7 +672,7 @@ class _RefreshProgressIndicatorState extends _CircularProgressIndicatorState {
                 value: null, // Draw the indeterminate progress indicator.
                 headValue: headValue,
                 tailValue: tailValue,
-                stepValue: stepValue,
+                offsetValue: offsetValue,
                 rotationValue: rotationValue,
                 strokeWidth: widget.strokeWidth,
                 arrowheadScale: arrowheadScale,

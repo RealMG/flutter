@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -38,9 +38,10 @@ import 'observer_list.dart';
 ///
 ///  * [AnimatedBuilder], a widget that uses a builder callback to rebuild
 ///    whenever a given [Listenable] triggers its notifications. This widget is
-///    commonly used with [Animation] subclasses, wherein its name. It is a
-///    subclass of [AnimatedWidget], which can be used to create widgets that
-///    are driven from a [Listenable].
+///    commonly used with [Animation] subclasses, hence its name, but is by no
+///    means limited to animations, as it can be used with any [Listenable]. It
+///    is a subclass of [AnimatedWidget], which can be used to create widgets
+///    that are driven from a [Listenable].
 ///  * [ValueListenableBuilder], a widget that uses a builder callback to
 ///    rebuild whenever a [ValueListenable] object triggers its notifications,
 ///    providing the builder with the value of the object.
@@ -182,9 +183,9 @@ class ChangeNotifier implements Listenable {
   /// Call all the registered listeners.
   ///
   /// Call this method whenever the object changes, to notify any clients the
-  /// object may have. Listeners that are added during this iteration will not
-  /// be visited. Listeners that are removed during this iteration will not be
-  /// visited after they are removed.
+  /// object may have changed. Listeners that are added during this iteration
+  /// will not be visited. Listeners that are removed during this iteration will
+  /// not be visited after they are removed.
   ///
   /// Exceptions thrown by listeners will be caught and reported using
   /// [FlutterError.reportError].
@@ -200,7 +201,7 @@ class ChangeNotifier implements Listenable {
     assert(_debugAssertNotDisposed());
     if (_listeners != null) {
       final List<VoidCallback> localListeners = List<VoidCallback>.from(_listeners);
-      for (VoidCallback listener in localListeners) {
+      for (final VoidCallback listener in localListeners) {
         try {
           if (_listeners.contains(listener))
             listener();
@@ -209,10 +210,13 @@ class ChangeNotifier implements Listenable {
             exception: exception,
             stack: stack,
             library: 'foundation library',
-            context: 'while dispatching notifications for $runtimeType',
-            informationCollector: (StringBuffer information) {
-              information.writeln('The $runtimeType sending notification was:');
-              information.write('  $this');
+            context: ErrorDescription('while dispatching notifications for $runtimeType'),
+            informationCollector: () sync* {
+              yield DiagnosticsProperty<ChangeNotifier>(
+                'The $runtimeType sending notification was',
+                this,
+                style: DiagnosticsTreeStyle.errorProperty,
+              );
             },
           ));
         }
@@ -228,7 +232,7 @@ class _MergingListenable extends Listenable {
 
   @override
   void addListener(VoidCallback listener) {
-    for (final Listenable child  in _children) {
+    for (final Listenable child in _children) {
       child?.addListener(listener);
     }
   }
@@ -248,14 +252,18 @@ class _MergingListenable extends Listenable {
 
 /// A [ChangeNotifier] that holds a single value.
 ///
-/// When [value] is replaced, this class notifies its listeners.
+/// When [value] is replaced with something that is not equal to the old
+/// value as evaluated by the equality operator ==, this class notifies its
+/// listeners.
 class ValueNotifier<T> extends ChangeNotifier implements ValueListenable<T> {
   /// Creates a [ChangeNotifier] that wraps this value.
   ValueNotifier(this._value);
 
   /// The current value stored in this notifier.
   ///
-  /// When the value is replaced, this class notifies its listeners.
+  /// When the value is replaced with something that is not equal to the old
+  /// value as evaluated by the equality operator ==, this class notifies its
+  /// listeners.
   @override
   T get value => _value;
   T _value;

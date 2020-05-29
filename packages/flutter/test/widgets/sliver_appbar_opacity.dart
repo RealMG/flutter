@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,7 +15,7 @@ void main() {
           floating: false,
           bottom: false,
           controller: controller,
-        )
+        ),
     );
 
     final RenderParagraph render = tester.renderObject(find.text('Hallo Welt!!1'));
@@ -34,7 +34,7 @@ void main() {
           floating: false,
           bottom: true,
           controller: controller,
-        )
+        ),
     );
 
     final RenderParagraph render = tester.renderObject(find.text('Hallo Welt!!1'));
@@ -53,7 +53,7 @@ void main() {
           floating: true,
           bottom: false,
           controller: controller,
-        )
+        ),
     );
 
     final RenderParagraph render = tester.renderObject(find.text('Hallo Welt!!1'));
@@ -72,7 +72,7 @@ void main() {
           floating: true,
           bottom: true,
           controller: controller,
-        )
+        ),
     );
 
     final RenderParagraph render = tester.renderObject(find.text('Hallo Welt!!1'));
@@ -91,7 +91,7 @@ void main() {
           floating: false,
           bottom: false,
           controller: controller,
-        )
+        ),
     );
 
     final RenderParagraph render = tester.renderObject(find.text('Hallo Welt!!1'));
@@ -110,7 +110,7 @@ void main() {
           floating: false,
           bottom: true,
           controller: controller,
-        )
+        ),
     );
 
     final RenderParagraph render = tester.renderObject(find.text('Hallo Welt!!1'));
@@ -131,7 +131,7 @@ void main() {
           floating: true,
           bottom: false,
           controller: controller,
-        )
+        ),
     );
 
     final RenderParagraph render = tester.renderObject(find.text('Hallo Welt!!1'));
@@ -152,7 +152,7 @@ void main() {
         floating: true,
         bottom: true,
         controller: controller,
-      )
+      ),
     );
 
     final RenderParagraph render = tester.renderObject(find.text('Hallo Welt!!1'));
@@ -166,7 +166,7 @@ void main() {
 
 class _TestWidget extends StatelessWidget {
 
-  const _TestWidget({this.pinned, this.floating, this.bottom, this.controller,});
+  const _TestWidget({this.pinned, this.floating, this.bottom, this.controller});
 
   final bool pinned;
   final bool floating;

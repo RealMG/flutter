@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -26,6 +26,9 @@ import 'package:flutter/widgets.dart';
 ///  * [Icon], used to show these icons.
 ///  * <https://github.com/flutter/cupertino_icons/blob/master/map.png>, a map of the icons in this icons font.
 class CupertinoIcons {
+  // This class is not meant to be instatiated or extended; this constructor
+  // prevents instantiation and extension.
+  // ignore: unused_element
   CupertinoIcons._();
 
   /// The icon font used for Cupertino icons.
@@ -134,6 +137,20 @@ class CupertinoIcons {
   ///  * [check_mark_circled], which is similar, but not filled in.
   static const IconData check_mark_circled_solid = IconData(0xf3ff, fontFamily: iconFont, fontPackage: iconFontPackage);
 
+  /// An empty circle (a ring).  An un-selected radio button.
+  ///
+  /// See also:
+  ///
+  ///  * [circle_filled], which is similar but filled in.
+  static const IconData circle = IconData(0xf401, fontFamily: iconFont, fontPackage: iconFontPackage);
+
+  /// A filled circle.  The circle is surrounded by a ring.  A selected radio button.
+  ///
+  /// See also:
+  ///
+  ///  * [circle], which is similar but not filled in.
+  static const IconData circle_filled = IconData(0xf400, fontFamily: iconFont, fontPackage: iconFontPackage);
+
   /// A thicker left chevron used in iOS for the navigation bar back button.
   static const IconData back = IconData(0xf3cf, fontFamily: iconFont, fontPackage: iconFontPackage, matchTextDirection: true);
 
@@ -176,7 +193,7 @@ class CupertinoIcons {
   /// A 25% charged battery.
   static const IconData battery_25_percent = IconData(0xf115, fontFamily: iconFont, fontPackage: iconFontPackage);
 
-  /// The bluetooth logo.
+  /// The Bluetooth logo.
   static const IconData bluetooth = IconData(0xf116, fontFamily: iconFont, fontPackage: iconFontPackage);
 
   /// A restart arrow, pointing downwards.
@@ -195,7 +212,28 @@ class CupertinoIcons {
   /// For another version of this icon (introduced in iOS 7), see [share].
   static const IconData share_up = IconData(0xf220, fontFamily: iconFont, fontPackage: iconFontPackage);
 
-  /// Two right-facing intertwined arrows.
+  /// Two thin right-facing intertwined arrows.
+  ///
+  /// See also:
+  ///
+  ///  * [shuffle_medium], with slightly thicker arrows.
+  ///  * [shuffle_thick], with thicker, bold arrows.
+  static const IconData shuffle = IconData(0xf4a9, fontFamily: iconFont, fontPackage: iconFontPackage);
+
+  /// Two medium thickness right-facing intertwined arrows.
+  ///
+  /// See also:
+  ///
+  ///  * [shuffle], with thin arrows.
+  ///  * [shuffle_thick], with thicker, bold arrows.
+  static const IconData shuffle_medium = IconData(0xf4a8, fontFamily: iconFont, fontPackage: iconFontPackage);
+
+  /// Two thick right-facing intertwined arrows.
+  ///
+  /// See also:
+  ///
+  ///  * [shuffle], with thin arrows.
+  ///  * [shuffle_medium], with slightly thinner arrows.
   static const IconData shuffle_thick = IconData(0xf221, fontFamily: iconFont, fontPackage: iconFontPackage);
 
   /// A camera for still photographs. This icon is filled in.
@@ -487,8 +525,19 @@ class CupertinoIcons {
   ///  * [gear_solid], which is another cogwheel with a different design.
   static const IconData settings_solid = IconData(0xf412, fontFamily: iconFont, fontPackage: iconFontPackage);
 
-  /// A symbol representing a single musical note.
+  /// A symbol representing a solid single musical note.
+  ///
+  /// See also:
+  ///
+  ///  * [double_music_note], which is similar, but with 2 connected notes.
   static const IconData music_note = IconData(0xf46b, fontFamily: iconFont, fontPackage: iconFontPackage);
+
+  /// A symbol representing 2 connected musical notes.
+  ///
+  /// See also:
+  ///
+  ///  * [music_note], which is similar, but with a single note.
+  static const IconData double_music_note = IconData(0xf46c, fontFamily: iconFont, fontPackage: iconFontPackage);
 
   /// A triangle facing to the right. This icon is not filled in.
   ///
@@ -834,4 +883,60 @@ class CupertinoIcons {
   ///
   ///  * [lab_flask], similar, but not filled in.
   static const IconData lab_flask_solid = IconData(0xf431, fontFamily: iconFont, fontPackage: iconFontPackage);
+
+  /// An outlined heart shape. Can be used to indicate like or favorite states.
+  ///
+  /// See also:
+  ///
+  ///  * [heart_solid], same shape, but filled in.
+  static const IconData heart = IconData(0xf442, fontFamily: iconFont, fontPackage: iconFontPackage);
+
+  /// A filled heart shape. Can be used to indicate like or favorite states.
+  ///
+  /// See also:
+  ///
+  ///  * [heart], same shape, but not filled in.
+  static const IconData heart_solid = IconData(0xf443, fontFamily: iconFont, fontPackage: iconFontPackage);
+
+  /// An outlined bell. Can be used to represent notifications.
+  ///
+  /// See also:
+  ///
+  ///  * [bell_solid], same shape, but filled in.
+  static const IconData bell = IconData(0xf3e1, fontFamily: iconFont, fontPackage: iconFontPackage);
+
+  /// A filled bell. Can be used represent notifications.
+  ///
+  /// See also:
+  ///
+  ///  * [bell], same shape, but not filled in.
+  static const IconData bell_solid = IconData(0xf3e2, fontFamily: iconFont, fontPackage: iconFontPackage);
+
+  /// An outlined folded newspaper icon.
+  ///
+  /// See also:
+  ///
+  ///  * [news_solid], same shape, but filled in.
+  static const IconData news = IconData(0xf471, fontFamily: iconFont, fontPackage: iconFontPackage);
+
+  /// A filled folded newspaper icon.
+  ///
+  /// See also:
+  ///
+  ///  * [news], same shape, but not filled in.
+  static const IconData news_solid = IconData(0xf472, fontFamily: iconFont, fontPackage: iconFontPackage);
+
+  /// A outlined brightness icon.
+  ///
+  /// See also:
+  ///
+  ///  * [brightness_solid], same shape, but filled in.
+  static const IconData brightness = IconData(0xf4B6, fontFamily: iconFont, fontPackage: iconFontPackage);
+
+  /// A filled in brightness icon.
+  ///
+  /// See also:
+  ///
+  ///  * [brightness], same shape, but not filled in.
+  static const IconData brightness_solid = IconData(0xf4B7, fontFamily: iconFont, fontPackage: iconFontPackage);
 }

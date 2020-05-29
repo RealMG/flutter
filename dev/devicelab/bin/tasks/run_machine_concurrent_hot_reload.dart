@@ -1,4 +1,4 @@
-// Copyright (c) 2018 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,7 +17,7 @@ void main() {
   Map<String, dynamic> parseFlutterResponse(String line) {
     if (line.startsWith('[') && line.endsWith(']')) {
       try {
-        return json.decode(line)[0];
+        return json.decode(line)[0] as Map<String, dynamic>;
       } catch (e) {
         // Not valid JSON, so likely some other output that was surrounded by [brackets]
         return null;
@@ -31,7 +31,7 @@ void main() {
   }
 
   task(() async {
-    int vmServicePort;
+    Uri vmServiceUri;
     String appId;
 
     final Device device = await devices.workingDevice;
@@ -48,6 +48,7 @@ void main() {
           'run',
           '--machine',
           '--verbose',
+          '--no-fast-start',
           '-d',
           device.deviceId,
           'lib/commands.dart',
@@ -60,14 +61,14 @@ void main() {
         final dynamic json = parseFlutterResponse(line);
         if (json != null) {
           if (json['event'] == 'app.debugPort') {
-            vmServicePort = Uri.parse(json['params']['wsUri']).port;
-            print('service protocol connection available at port $vmServicePort');
+            vmServiceUri = Uri.parse(json['params']['wsUri'] as String);
+            print('service protocol connection available at $vmServiceUri');
           } else if (json['event'] == 'app.started') {
-            appId = json['params']['appId'];
+            appId = json['params']['appId'] as String;
             print('application identifier is $appId');
           }
         }
-        if (vmServicePort != null && appId != null && !ready.isCompleted) {
+        if (vmServiceUri != null && appId != null && !ready.isCompleted) {
           print('run: ready!');
           ready.complete();
           ok ??= true;
@@ -84,9 +85,7 @@ void main() {
       if (!ok)
         throw 'Failed to run test app.';
 
-      final VMServiceClient client = VMServiceClient.connect(
-        'ws://localhost:$vmServicePort/ws'
-      );
+      final VMServiceClient client = VMServiceClient.connect(vmServiceUri);
 
       int id = 1;
       Future<Map<String, dynamic>> sendRequest(String method, dynamic params) async {
@@ -131,7 +130,7 @@ void main() {
       if (!ok)
         throw 'App failed or crashed during hot reloads.';
 
-      final List<dynamic> responses = results;
+      final List<dynamic> responses = results as List<dynamic>;
       final List<dynamic> errorResponses = responses.where(
         (dynamic r) => r['error'] != null
       ).toList();
@@ -143,7 +142,7 @@ void main() {
 
       if (errorResponses.length != 1)
         throw 'Did not receive the expected (exactly one) hot reload error response.';
-      final String errorMessage = errorResponses.first['error'];
+      final String errorMessage = (errorResponses.first as Map<String, dynamic>)['error'] as String;
       if (!errorMessage.contains('in progress'))
         throw 'Error response was not that hot reload was in progress.';
       if (successResponses.length != 1)

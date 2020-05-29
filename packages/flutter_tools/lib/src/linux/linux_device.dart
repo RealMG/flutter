@@ -1,41 +1,26 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import '../application_package.dart';
-import '../base/os.dart';
+import 'package:meta/meta.dart';
+
 import '../base/platform.dart';
 import '../build_info.dart';
+import '../desktop_device.dart';
 import '../device.dart';
+import '../features.dart';
+import '../project.dart';
+import 'application_package.dart';
+import 'build_linux.dart';
 import 'linux_workflow.dart';
 
 /// A device that represents a desktop Linux target.
-class LinuxDevice extends Device {
-  LinuxDevice() : super('Linux');
-
-  @override
-  void clearLogs() { }
-
-  @override
-  DeviceLogReader getLogReader({ ApplicationPackage app }) => NoOpDeviceLogReader('linux');
-
-  @override
-  Future<bool> installApp(ApplicationPackage app) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<bool> isAppInstalled(ApplicationPackage app) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<bool> isLatestBuildInstalled(ApplicationPackage app) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<bool> get isLocalEmulator async => false;
+class LinuxDevice extends DesktopDevice {
+  LinuxDevice() : super(
+      'Linux',
+      platformType: PlatformType.linux,
+      ephemeral: false,
+  );
 
   @override
   bool isSupported() => true;
@@ -44,51 +29,54 @@ class LinuxDevice extends Device {
   String get name => 'Linux';
 
   @override
-  DevicePortForwarder get portForwarder => const NoOpDevicePortForwarder();
-
-  @override
-  Future<String> get sdkNameAndVersion async => os.name;
-
-  @override
-  Future<LaunchResult> startApp(
-    ApplicationPackage package, {
-    String mainPath,
-    String route,
-    DebuggingOptions debuggingOptions,
-    Map<String, dynamic> platformArgs,
-    bool prebuiltApplication = false,
-    bool applicationNeedsRebuild = false,
-    bool usesTerminalUi = true,
-    bool ipv6 = false,
-  }) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<bool> stopApp(ApplicationPackage app) {
-    throw UnimplementedError();
-  }
-
-  @override
   Future<TargetPlatform> get targetPlatform async => TargetPlatform.linux_x64;
 
   @override
-  Future<bool> uninstallApp(ApplicationPackage app) {
-    throw UnimplementedError();
+  bool isSupportedForProject(FlutterProject flutterProject) {
+    return flutterProject.linux.existsSync();
+  }
+
+  @override
+  Future<void> buildForDevice(
+    covariant LinuxApp package, {
+    String mainPath,
+    BuildInfo buildInfo,
+  }) async {
+    await buildLinux(
+      FlutterProject.current().linux,
+      buildInfo,
+      target: mainPath,
+    );
+  }
+
+  @override
+  String executablePathForDevice(covariant LinuxApp package, BuildMode buildMode) {
+    return package.executable(buildMode);
   }
 }
 
 class LinuxDevices extends PollingDeviceDiscovery {
-  LinuxDevices() : super('linux devices');
+  LinuxDevices({
+    @required Platform platform,
+    @required FeatureFlags featureFlags,
+  }) : _platform = platform,
+       _linuxWorkflow = LinuxWorkflow(
+          platform: platform,
+          featureFlags: featureFlags,
+       ),
+       super('linux devices');
+
+  final Platform _platform;
+  final LinuxWorkflow _linuxWorkflow;
 
   @override
-  bool get supportsPlatform => platform.isLinux;
+  bool get supportsPlatform => _platform.isLinux;
 
   @override
-  bool get canListAnything => linuxWorkflow.canListDevices;
+  bool get canListAnything => _linuxWorkflow.canListDevices;
 
   @override
-  Future<List<Device>> pollingGetDevices() async {
+  Future<List<Device>> pollingGetDevices({ Duration timeout }) async {
     if (!canListAnything) {
       return const <Device>[];
     }

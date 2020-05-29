@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -127,6 +127,7 @@ class ProblemWidget extends StatefulWidget {
 class ProblemWidgetState extends State<ProblemWidget> with AutomaticKeepAliveClientMixin<ProblemWidget> {
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     Widget child = Semantics(
       container: true,
       child: Text(widget.text),

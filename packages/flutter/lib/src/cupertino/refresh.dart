@@ -1,6 +1,7 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
 import 'dart:async';
 import 'dart:math';
 
@@ -103,6 +104,7 @@ class _RenderCupertinoSliverRefresh extends RenderSliver
 
   @override
   void performLayout() {
+    final SliverConstraints constraints = this.constraints;
     // Only pulling to refresh from the top is currently supported.
     assert(constraints.axisDirection == AxisDirection.down);
     assert(constraints.growthDirection == GrowthDirection.forward);
@@ -248,8 +250,17 @@ typedef RefreshCallback = Future<void> Function();
 /// and the indicator sliver has retracted at least 90% of the way back.
 ///
 /// Can only be used in downward-scrolling vertical lists that overscrolls. In
-/// other words, refreshes can't be triggered with lists using
-/// [ClampingScrollPhysics].
+/// other words, refreshes can't be triggered with [Scrollable]s using
+/// [ClampingScrollPhysics] which is the default on Android. To allow overscroll
+/// on Android, use an overscrolling physics such as [BouncingScrollPhysics].
+/// This can be done via:
+///
+///  * Providing a [BouncingScrollPhysics] (possibly in combination with a
+///    [AlwaysScrollableScrollPhysics]) while constructing the scrollable.
+///  * By inserting a [ScrollConfiguration] with [BouncingScrollPhysics] above
+///    the scrollable.
+///  * By using [CupertinoApp], which always uses a [ScrollConfiguration]
+///    with [BouncingScrollPhysics] regardless of platform.
 ///
 /// In a typical application, this sliver should be inserted between the app bar
 /// sliver such as [CupertinoSliverNavigationBar] and your main scrollable
@@ -344,8 +355,7 @@ class CupertinoSliverRefreshControl extends StatefulWidget {
   /// state that gets passed into the [builder] function. Used for testing.
   @visibleForTesting
   static RefreshIndicatorMode state(BuildContext context) {
-    final _CupertinoSliverRefreshControlState state
-        = context.ancestorStateOfType(const TypeMatcher<_CupertinoSliverRefreshControlState>());
+    final _CupertinoSliverRefreshControlState state = context.findAncestorStateOfType<_CupertinoSliverRefreshControlState>();
     return state.refreshState;
   }
 
@@ -370,9 +380,9 @@ class CupertinoSliverRefreshControl extends StatefulWidget {
                 opacity: opacityCurve.transform(
                   min(pulledExtent / refreshTriggerPullDistance, 1.0)
                 ),
-                child: const Icon(
+                child: Icon(
                   CupertinoIcons.down_arrow,
-                  color: CupertinoColors.inactiveGray,
+                  color: CupertinoDynamicColor.resolve(CupertinoColors.inactiveGray, context),
                   size: 36.0,
                 ),
               )
@@ -454,7 +464,7 @@ class _CupertinoSliverRefreshControlState extends State<CupertinoSliverRefreshCo
             // user supplied and we're always here in the middle of the sliver's
             // performLayout.
             SchedulerBinding.instance.addPostFrameCallback((Duration timestamp) {
-              refreshTask = widget.onRefresh()..then((_) {
+              refreshTask = widget.onRefresh()..whenComplete(() {
                 if (mounted) {
                   setState(() => refreshTask = null);
                   // Trigger one more transition because by this time, BoxConstraint's

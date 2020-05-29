@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,6 +13,7 @@ import 'semantics_tester.dart';
 void main() {
   testWidgets('Drag and drop - control test', (WidgetTester tester) async {
     final List<int> accepted = <int>[];
+    final List<DragTargetDetails<int>> acceptedDetails = <DragTargetDetails<int>>[];
     int dragStartedCount = 0;
 
     await tester.pumpWidget(MaterialApp(
@@ -31,12 +32,14 @@ void main() {
               return Container(height: 100.0, child: const Text('Target'));
             },
             onAccept: accepted.add,
+            onAcceptWithDetails: acceptedDetails.add,
           ),
         ],
       ),
     ));
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -47,6 +50,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -57,6 +61,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -66,6 +71,8 @@ void main() {
     await tester.pump();
 
     expect(accepted, equals(<int>[1]));
+    expect(acceptedDetails, hasLength(1));
+    expect(acceptedDetails.first.offset, const Offset(256.0, 74.0));
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -90,13 +97,21 @@ void main() {
             builder: (BuildContext context, List<int> data, List<dynamic> rejects) {
               return Container(height: 100.0, child: const Text('Target 1'));
             },
-            onLeave: (int data) => leftBehind['Target 1'] = leftBehind['Target 1'] + data,
+            onLeave: (Object data) {
+              if (data is int) {
+                leftBehind['Target 1'] = leftBehind['Target 1'] + data;
+              }
+            },
           ),
           DragTarget<int>(
             builder: (BuildContext context, List<int> data, List<dynamic> rejects) {
               return Container(height: 100.0, child: const Text('Target 2'));
             },
-            onLeave: (int data) => leftBehind['Target 2'] = leftBehind['Target 2'] + data,
+            onLeave: (Object data) {
+              if (data is int) {
+                leftBehind['Target 2'] = leftBehind['Target 2'] + data;
+              }
+            },
           ),
         ],
       ),
@@ -158,18 +173,23 @@ void main() {
                 onTap: () {
                   events.add('tap');
                 },
-                child: Container(child: const Text('Button'),
+                child: Container(
+                  child: const Text('Button'),
+                ),
               ),
-            ),
-            DragTarget<int>(
-              builder: (BuildContext context, List<int> data, List<dynamic> rejects) {
-                return IgnorePointer(
-                  child: Container(child: const Text('Target')),
-                );
-              },
-              onAccept: (int data) {
-                events.add('drop');
-              }),
+              DragTarget<int>(
+                builder: (BuildContext context, List<int> data, List<dynamic> rejects) {
+                  return IgnorePointer(
+                    child: Container(child: const Text('Target')),
+                  );
+                },
+                onAccept: (int data) {
+                  events.add('drop');
+                },
+                onAcceptWithDetails: (DragTargetDetails<int> _) {
+                  events.add('details');
+                },
+              ),
             ],
           ),
         ],
@@ -207,7 +227,7 @@ void main() {
     expect(events, isEmpty);
     await gesture.up();
     await tester.pump();
-    expect(events, equals(<String>['drop']));
+    expect(events, equals(<String>['drop', 'details']));
     events.clear();
 
     // drag and tap and drop
@@ -225,7 +245,7 @@ void main() {
     await tester.tap(find.text('Target'));
     await gesture.up();
     await tester.pump();
-    expect(events, equals(<String>['tap', 'tap', 'drop']));
+    expect(events, equals(<String>['tap', 'tap', 'drop', 'details']));
     events.clear();
   });
 
@@ -254,6 +274,9 @@ void main() {
             onAccept: (int data) {
               events.add('drop');
             },
+            onAcceptWithDetails: (DragTargetDetails<int> _) {
+              events.add('details');
+            },
           ),
         ],
       ),
@@ -279,7 +302,7 @@ void main() {
     expect(events, isEmpty);
     await gesture.up();
     await tester.pump();
-    expect(events, equals(<String>['drop']));
+    expect(events, equals(<String>['drop', 'details']));
     events.clear();
   });
 
@@ -301,6 +324,9 @@ void main() {
             },
             onAccept: (int data) {
               events.add('drop');
+            },
+            onAcceptWithDetails: (DragTargetDetails<int> _) {
+              events.add('details');
             },
           ),
         ],
@@ -348,6 +374,9 @@ void main() {
             onAccept: (int data) {
               events.add('drop');
             },
+            onAcceptWithDetails: (DragTargetDetails<int> _) {
+              events.add('details');
+            },
           ),
         ],
       ),
@@ -374,7 +403,7 @@ void main() {
     expect(events, isEmpty);
     await gesture.up();
     await tester.pump();
-    expect(events, equals(<String>['drop']));
+    expect(events, equals(<String>['drop', 'details']));
   });
 
   testWidgets('Drag and drop - horizontal and vertical draggables in vertical block', (WidgetTester tester) async {
@@ -391,6 +420,9 @@ void main() {
             },
             onAccept: (int data) {
               events.add('drop $data');
+            },
+            onAcceptWithDetails: (DragTargetDetails<int> _) {
+              events.add('details');
             },
           ),
           Container(height: 400.0),
@@ -429,7 +461,7 @@ void main() {
     await tester.pump();
     await gesture.up();
     await tester.pump();
-    expect(events, equals(<String>['drop 2']));
+    expect(events, equals(<String>['drop 2', 'details']));
     expect(tester.getCenter(find.text('Target')).dy, greaterThan(0.0));
     events.clear();
 
@@ -446,7 +478,7 @@ void main() {
     await tester.pump();
     await gesture.up();
     await tester.pump();
-    expect(events, equals(<String>['drop 1']));
+    expect(events, equals(<String>['drop 1', 'details']));
     expect(tester.getCenter(find.text('Target')).dy, greaterThan(0.0));
     events.clear();
 
@@ -464,7 +496,7 @@ void main() {
     await tester.pump();
     await gesture.up();
     await tester.pump();
-    expect(events, equals(<String>['drop 2']));
+    expect(events, equals(<String>['drop 2', 'details']));
     expect(tester.getCenter(find.text('Target')).dy, greaterThan(0.0));
     events.clear();
 
@@ -499,6 +531,9 @@ void main() {
             },
             onAccept: (int data) {
               events.add('drop $data');
+            },
+            onAcceptWithDetails: (DragTargetDetails<int> _) {
+              events.add('details');
             },
           ),
           Container(width: 400.0),
@@ -537,7 +572,7 @@ void main() {
     await tester.pump();
     await gesture.up();
     await tester.pump();
-    expect(events, equals(<String>['drop 1']));
+    expect(events, equals(<String>['drop 1', 'details']));
     expect(tester.getCenter(find.text('Target')).dx, greaterThan(0.0));
     events.clear();
 
@@ -554,7 +589,7 @@ void main() {
     await tester.pump();
     await gesture.up();
     await tester.pump();
-    expect(events, equals(<String>['drop 2']));
+    expect(events, equals(<String>['drop 2', 'details']));
     expect(tester.getCenter(find.text('Target')).dx, greaterThan(0.0));
     events.clear();
 
@@ -572,7 +607,7 @@ void main() {
     await tester.pump();
     await gesture.up();
     await tester.pump();
-    expect(events, equals(<String>['drop 1']));
+    expect(events, equals(<String>['drop 1', 'details']));
     expect(tester.getCenter(find.text('Target')).dx, greaterThan(0.0));
     events.clear();
 
@@ -606,6 +641,9 @@ void main() {
               },
               onAccept: (int data) {
                 events.add('drop $data');
+              },
+              onAcceptWithDetails: (DragTargetDetails<int> _) {
+                events.add('details');
               },
             ),
             Container(width: 400.0),
@@ -722,6 +760,7 @@ void main() {
 
   testWidgets('Drag and drop - onDraggableCanceled not called if dropped on accepting target', (WidgetTester tester) async {
     final List<int> accepted = <int>[];
+    final List<DragTargetDetails<int>> acceptedDetails = <DragTargetDetails<int>>[];
     bool onDraggableCanceledCalled = false;
 
     await tester.pumpWidget(MaterialApp(
@@ -740,12 +779,14 @@ void main() {
               return Container(height: 100.0, child: const Text('Target'));
             },
             onAccept: accepted.add,
+            onAcceptWithDetails: acceptedDetails.add,
           ),
         ],
       ),
     ));
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -756,6 +797,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -766,6 +808,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -775,6 +818,8 @@ void main() {
     await tester.pump();
 
     expect(accepted, equals(<int>[1]));
+    expect(acceptedDetails, hasLength(1));
+    expect(acceptedDetails.first.offset, const Offset(256.0, 74.0));
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -783,6 +828,7 @@ void main() {
 
   testWidgets('Drag and drop - onDraggableCanceled called if dropped on non-accepting target', (WidgetTester tester) async {
     final List<int> accepted = <int>[];
+    final List<DragTargetDetails<int>> acceptedDetails = <DragTargetDetails<int>>[];
     bool onDraggableCanceledCalled = false;
     Velocity onDraggableCanceledVelocity;
     Offset onDraggableCanceledOffset;
@@ -808,12 +854,15 @@ void main() {
               );
             },
             onWillAccept: (int data) => false,
+            onAccept: accepted.add,
+            onAcceptWithDetails: acceptedDetails.add,
           ),
         ],
       ),
     ));
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -824,6 +873,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -834,6 +884,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -843,6 +894,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -853,6 +905,7 @@ void main() {
 
   testWidgets('Drag and drop - onDraggableCanceled called if dropped on non-accepting target with correct velocity', (WidgetTester tester) async {
     final List<int> accepted = <int>[];
+    final List<DragTargetDetails<int>> acceptedDetails = <DragTargetDetails<int>>[];
     bool onDraggableCanceledCalled = false;
     Velocity onDraggableCanceledVelocity;
     Offset onDraggableCanceledOffset;
@@ -876,12 +929,15 @@ void main() {
               child: const Text('Target'),
             );
           },
-          onWillAccept: (int data) => false),
-        ],
-      ),
-    ));
+          onWillAccept: (int data) => false,
+          onAccept: accepted.add,
+          onAcceptWithDetails: acceptedDetails.add,
+        ),
+      ],
+    )));
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -892,6 +948,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -903,6 +960,7 @@ void main() {
 
   testWidgets('Drag and drop - onDragEnd not called if dropped on non-accepting target', (WidgetTester tester) async {
     final List<int> accepted = <int>[];
+    final List<DragTargetDetails<int>> acceptedDetails = <DragTargetDetails<int>>[];
     bool onDragEndCalled = false;
     DraggableDetails onDragEndDraggableDetails;
     await tester.pumpWidget(MaterialApp(
@@ -925,12 +983,15 @@ void main() {
               );
             },
             onWillAccept: (int data) => false,
+            onAccept: accepted.add,
+            onAcceptWithDetails: acceptedDetails.add,
           ),
         ],
       ),
     ));
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -941,6 +1002,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -951,6 +1013,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -960,6 +1023,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -972,8 +1036,145 @@ void main() {
             Offset(secondLocation.dx, secondLocation.dy - firstLocation.dy)));
   });
 
+  testWidgets('Drag and drop - DragTarget rebuilds with and without rejected data when a rejected draggable enters and leaves', (WidgetTester tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Column(
+        children: <Widget>[
+          const Draggable<int>(
+            data: 1,
+            child: Text('Source'),
+            feedback: Text('Dragging'),
+          ),
+          DragTarget<int>(
+            builder: (BuildContext context, List<int> data, List<dynamic> rejects) {
+              return Container(
+                height: 100.0,
+                child: rejects.isNotEmpty
+                    ? const Text('Rejected')
+                    : const Text('Target'),
+              );
+            },
+            onWillAccept: (int data) => false,
+          ),
+        ],
+      ),
+    ));
+
+    expect(find.text('Dragging'), findsNothing);
+    expect(find.text('Target'), findsOneWidget);
+    expect(find.text('Rejected'), findsNothing);
+
+    final Offset firstLocation = tester.getTopLeft(find.text('Source'));
+    final TestGesture gesture =
+    await tester.startGesture(firstLocation, pointer: 7);
+    await tester.pump();
+
+    expect(find.text('Dragging'), findsOneWidget);
+    expect(find.text('Target'), findsOneWidget);
+    expect(find.text('Rejected'), findsNothing);
+
+    final Offset secondLocation = tester.getCenter(find.text('Target'));
+    await gesture.moveTo(secondLocation);
+    await tester.pump();
+
+    expect(find.text('Dragging'), findsOneWidget);
+    expect(find.text('Target'), findsNothing);
+    expect(find.text('Rejected'), findsOneWidget);
+
+    await gesture.moveTo(firstLocation);
+    await tester.pump();
+
+    expect(find.text('Dragging'), findsOneWidget);
+    expect(find.text('Target'), findsOneWidget);
+    expect(find.text('Rejected'), findsNothing);
+  });
+
+
+  testWidgets('Drag and drop - Can drag and drop over a non-accepting target multiple times', (WidgetTester tester) async {
+    int numberOfTimesOnDraggableCanceledCalled = 0;
+    await tester.pumpWidget(MaterialApp(
+      home: Column(
+        children: <Widget>[
+          Draggable<int>(
+            data: 1,
+            child: const Text('Source'),
+            feedback: const Text('Dragging'),
+          onDraggableCanceled: (Velocity velocity, Offset offset) {
+            numberOfTimesOnDraggableCanceledCalled++;
+          },
+          ),
+          DragTarget<int>(
+            builder: (BuildContext context, List<int> data, List<dynamic> rejects) {
+              return Container(
+                height: 100.0,
+                child: rejects.isNotEmpty
+                    ? const Text('Rejected')
+                    : const Text('Target'),
+              );
+            },
+            onWillAccept: (int data) => false,
+          ),
+        ],
+      ),
+    ));
+
+    expect(find.text('Dragging'), findsNothing);
+    expect(find.text('Target'), findsOneWidget);
+    expect(find.text('Rejected'), findsNothing);
+
+    final Offset firstLocation = tester.getTopLeft(find.text('Source'));
+    final TestGesture gesture =
+    await tester.startGesture(firstLocation, pointer: 7);
+    await tester.pump();
+
+    expect(find.text('Dragging'), findsOneWidget);
+    expect(find.text('Target'), findsOneWidget);
+    expect(find.text('Rejected'), findsNothing);
+
+    final Offset secondLocation = tester.getCenter(find.text('Target'));
+    await gesture.moveTo(secondLocation);
+    await tester.pump();
+
+    expect(find.text('Dragging'), findsOneWidget);
+    expect(find.text('Target'), findsNothing);
+    expect(find.text('Rejected'), findsOneWidget);
+
+    await gesture.up();
+    await tester.pump();
+
+    expect(find.text('Dragging'), findsNothing);
+    expect(find.text('Target'), findsOneWidget);
+    expect(find.text('Rejected'), findsNothing);
+    expect(numberOfTimesOnDraggableCanceledCalled, 1);
+
+    // Drag and drop the Draggable onto the Target a second time.
+    final TestGesture secondGesture =
+    await tester.startGesture(firstLocation, pointer: 7);
+    await tester.pump();
+
+    expect(find.text('Dragging'), findsOneWidget);
+    expect(find.text('Target'), findsOneWidget);
+    expect(find.text('Rejected'), findsNothing);
+
+    await secondGesture.moveTo(secondLocation);
+    await tester.pump();
+
+    expect(find.text('Dragging'), findsOneWidget);
+    expect(find.text('Target'), findsNothing);
+    expect(find.text('Rejected'), findsOneWidget);
+
+    await secondGesture.up();
+    await tester.pump();
+
+    expect(numberOfTimesOnDraggableCanceledCalled, 2);
+    expect(find.text('Dragging'), findsNothing);
+    expect(find.text('Target'), findsOneWidget);
+    expect(find.text('Rejected'), findsNothing);
+  });
+
   testWidgets('Drag and drop - onDragCompleted not called if dropped on non-accepting target', (WidgetTester tester) async {
     final List<int> accepted = <int>[];
+    final List<DragTargetDetails<int>> acceptedDetails = <DragTargetDetails<int>>[];
     bool onDragCompletedCalled = false;
 
     await tester.pumpWidget(MaterialApp(
@@ -995,12 +1196,15 @@ void main() {
               );
             },
             onWillAccept: (int data) => false,
+            onAccept: accepted.add,
+            onAcceptWithDetails: acceptedDetails.add,
           ),
         ],
       ),
     ));
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -1011,6 +1215,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -1021,6 +1226,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -1030,6 +1236,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -1038,6 +1245,7 @@ void main() {
 
   testWidgets('Drag and drop - onDragEnd called if dropped on accepting target', (WidgetTester tester) async {
     final List<int> accepted = <int>[];
+    final List<DragTargetDetails<int>> acceptedDetails = <DragTargetDetails<int>>[];
     bool onDragEndCalled = false;
     DraggableDetails onDragEndDraggableDetails;
     await tester.pumpWidget(MaterialApp(
@@ -1057,12 +1265,14 @@ void main() {
               return Container(height: 100.0, child: const Text('Target'));
             },
             onAccept: accepted.add,
+            onAcceptWithDetails: acceptedDetails.add,
           ),
         ],
       ),
     ));
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -1073,6 +1283,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -1083,6 +1294,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -1092,7 +1304,11 @@ void main() {
     await tester.pump();
 
     final Offset droppedLocation = tester.getTopLeft(find.text('Target'));
+    final Offset expectedDropOffset = Offset(droppedLocation.dx, secondLocation.dy - firstLocation.dy);
+
     expect(accepted, equals(<int>[1]));
+    expect(acceptedDetails, hasLength(1));
+    expect(acceptedDetails.first.offset, const Offset(256.0, 74.0));
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -1100,9 +1316,7 @@ void main() {
     expect(onDragEndDraggableDetails, isNotNull);
     expect(onDragEndDraggableDetails.wasAccepted, isTrue);
     expect(onDragEndDraggableDetails.velocity, equals(Velocity.zero));
-    expect(onDragEndDraggableDetails.offset,
-        equals(
-            Offset(droppedLocation.dx, secondLocation.dy - firstLocation.dy)));
+    expect(onDragEndDraggableDetails.offset, equals(expectedDropOffset));
   });
 
   testWidgets('DragTarget does not call onDragEnd when remove from the tree', (WidgetTester tester) async {
@@ -1126,6 +1340,9 @@ void main() {
             },
             onAccept: (int data) {
               events.add('drop');
+            },
+            onAcceptWithDetails: (DragTargetDetails<int> _) {
+              events.add('details');
             },
           ),
         ],
@@ -1170,6 +1387,7 @@ void main() {
 
   testWidgets('Drag and drop - onDragCompleted called if dropped on accepting target', (WidgetTester tester) async {
     final List<int> accepted = <int>[];
+    final List<DragTargetDetails<int>> acceptedDetails = <DragTargetDetails<int>>[];
     bool onDragCompletedCalled = false;
 
     await tester.pumpWidget(MaterialApp(
@@ -1188,12 +1406,14 @@ void main() {
               return Container(height: 100.0, child: const Text('Target'));
             },
             onAccept: accepted.add,
+            onAcceptWithDetails: acceptedDetails.add,
           ),
         ],
       ),
     ));
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -1204,6 +1424,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -1214,6 +1435,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -1223,6 +1445,8 @@ void main() {
     await tester.pump();
 
     expect(accepted, equals(<int>[1]));
+    expect(acceptedDetails, hasLength(1));
+    expect(acceptedDetails.first.offset, const Offset(256.0, 74.0));
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -1231,7 +1455,9 @@ void main() {
 
   testWidgets('Drag and drop - allow pass thru of unaccepted data test', (WidgetTester tester) async {
     final List<int> acceptedInts = <int>[];
+    final List<DragTargetDetails<int>> acceptedIntsDetails = <DragTargetDetails<int>>[];
     final List<double> acceptedDoubles = <double>[];
+    final List<DragTargetDetails<double>> acceptedDoublesDetails = <DragTargetDetails<double>>[];
 
     await tester.pumpWidget(MaterialApp(
       home: Column(
@@ -1258,6 +1484,7 @@ void main() {
                   );
                 },
                 onAccept: acceptedInts.add,
+                onAcceptWithDetails: acceptedIntsDetails.add,
               ),
               DragTarget<double>(
                 builder: (BuildContext context, List<double> data, List<dynamic> rejects) {
@@ -1269,6 +1496,7 @@ void main() {
                   );
                 },
                 onAccept: acceptedDoubles.add,
+                onAcceptWithDetails: acceptedDoublesDetails.add,
               ),
             ],
           ),
@@ -1277,7 +1505,9 @@ void main() {
     ));
 
     expect(acceptedInts, isEmpty);
+    expect(acceptedIntsDetails, isEmpty);
     expect(acceptedDoubles, isEmpty);
+    expect(acceptedDoublesDetails, isEmpty);
     expect(find.text('IntSource'), findsOneWidget);
     expect(find.text('IntDragging'), findsNothing);
     expect(find.text('DoubleSource'), findsOneWidget);
@@ -1294,7 +1524,9 @@ void main() {
     await tester.pump();
 
     expect(acceptedInts, isEmpty);
+    expect(acceptedIntsDetails, isEmpty);
     expect(acceptedDoubles, isEmpty);
+    expect(acceptedDoublesDetails, isEmpty);
     expect(find.text('IntDragging'), findsNothing);
     expect(find.text('DoubleDragging'), findsOneWidget);
 
@@ -1302,7 +1534,9 @@ void main() {
     await tester.pump();
 
     expect(acceptedInts, isEmpty);
+    expect(acceptedIntsDetails, isEmpty);
     expect(acceptedDoubles, isEmpty);
+    expect(acceptedDoublesDetails, isEmpty);
     expect(find.text('IntDragging'), findsNothing);
     expect(find.text('DoubleDragging'), findsOneWidget);
 
@@ -1310,18 +1544,24 @@ void main() {
     await tester.pump();
 
     expect(acceptedInts, isEmpty);
+    expect(acceptedIntsDetails, isEmpty);
     expect(acceptedDoubles, equals(<double>[1.0]));
+    expect(acceptedDoublesDetails, hasLength(1));
+    expect(acceptedDoublesDetails.first.offset, const Offset(112.0, 122.0));
     expect(find.text('IntDragging'), findsNothing);
     expect(find.text('DoubleDragging'), findsNothing);
 
     acceptedDoubles.clear();
+    acceptedDoublesDetails.clear();
 
     // Drag the int draggable.
     final TestGesture intGesture = await tester.startGesture(intLocation, pointer: 7);
     await tester.pump();
 
     expect(acceptedInts, isEmpty);
+    expect(acceptedIntsDetails, isEmpty);
     expect(acceptedDoubles, isEmpty);
+    expect(acceptedDoublesDetails, isEmpty);
     expect(find.text('IntDragging'), findsOneWidget);
     expect(find.text('DoubleDragging'), findsNothing);
 
@@ -1329,7 +1569,9 @@ void main() {
     await tester.pump();
 
     expect(acceptedInts, isEmpty);
+    expect(acceptedIntsDetails, isEmpty);
     expect(acceptedDoubles, isEmpty);
+    expect(acceptedDoublesDetails, isEmpty);
     expect(find.text('IntDragging'), findsOneWidget);
     expect(find.text('DoubleDragging'), findsNothing);
 
@@ -1337,14 +1579,19 @@ void main() {
     await tester.pump();
 
     expect(acceptedInts, equals(<int>[1]));
+    expect(acceptedIntsDetails, hasLength(1));
+    expect(acceptedIntsDetails.first.offset, const Offset(184.0, 122.0));
     expect(acceptedDoubles, isEmpty);
+    expect(acceptedDoublesDetails, isEmpty);
     expect(find.text('IntDragging'), findsNothing);
     expect(find.text('DoubleDragging'), findsNothing);
   });
 
   testWidgets('Drag and drop - allow pass thru of unaccepted data twice test', (WidgetTester tester) async {
     final List<DragTargetData> acceptedDragTargetDatas = <DragTargetData>[];
+    final List<DragTargetDetails<DragTargetData>> acceptedDragTargetDataDetails = <DragTargetDetails<DragTargetData>>[];
     final List<ExtendedDragTargetData> acceptedExtendedDragTargetDatas = <ExtendedDragTargetData>[];
+    final List<DragTargetDetails<ExtendedDragTargetData>> acceptedExtendedDragTargetDataDetails = <DragTargetDetails<ExtendedDragTargetData>>[];
     final DragTargetData dragTargetData = DragTargetData();
     await tester.pumpWidget(MaterialApp(
       home: Column(
@@ -1365,6 +1612,7 @@ void main() {
                     ),
                   );
                 }, onAccept: acceptedDragTargetDatas.add,
+                onAcceptWithDetails: acceptedDragTargetDataDetails.add,
               ),
               DragTarget<ExtendedDragTargetData>(
                 builder: (BuildContext context, List<ExtendedDragTargetData> data, List<dynamic> rejects) {
@@ -1376,6 +1624,7 @@ void main() {
                   );
                 },
                 onAccept: acceptedExtendedDragTargetDatas.add,
+                onAcceptWithDetails: acceptedExtendedDragTargetDataDetails.add,
               ),
             ],
           ),
@@ -1395,15 +1644,20 @@ void main() {
       await tester.pump();
 
       expect(acceptedDragTargetDatas, equals(<DragTargetData>[dragTargetData]));
+      expect(acceptedDragTargetDataDetails, hasLength(1));
+      expect(acceptedDragTargetDataDetails.first.offset, const Offset(256.0, 74.0));
       expect(acceptedExtendedDragTargetDatas, isEmpty);
+      expect(acceptedExtendedDragTargetDataDetails, isEmpty);
 
       acceptedDragTargetDatas.clear();
+      acceptedDragTargetDataDetails.clear();
       await tester.pump();
     }
   });
 
   testWidgets('Drag and drop - maxSimultaneousDrags', (WidgetTester tester) async {
     final List<int> accepted = <int>[];
+    final List<DragTargetDetails<int>> acceptedDetails = <DragTargetDetails<int>>[];
 
     Widget build(int maxSimultaneousDrags) {
       return MaterialApp(
@@ -1420,6 +1674,7 @@ void main() {
                 return Container(height: 100.0, child: const Text('Target'));
               },
               onAccept: accepted.add,
+              onAcceptWithDetails: acceptedDetails.add,
             ),
           ],
         ),
@@ -1432,6 +1687,7 @@ void main() {
     final Offset secondLocation = tester.getCenter(find.text('Target'));
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -1440,6 +1696,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -1449,6 +1706,7 @@ void main() {
     await tester.pumpWidget(build(2));
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -1457,6 +1715,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -1465,6 +1724,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNWidgets(2));
     expect(find.text('Target'), findsOneWidget);
@@ -1473,6 +1733,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNWidgets(2));
     expect(find.text('Target'), findsOneWidget);
@@ -1483,6 +1744,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNWidgets(2));
     expect(find.text('Target'), findsOneWidget);
@@ -1491,6 +1753,8 @@ void main() {
     await tester.pump();
 
     expect(accepted, equals(<int>[1]));
+    expect(acceptedDetails, hasLength(1));
+    expect(acceptedDetails.first.offset, const Offset(256.0, 74.0));
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -1499,6 +1763,9 @@ void main() {
     await tester.pump();
 
     expect(accepted, equals(<int>[1, 1]));
+    expect(acceptedDetails, hasLength(2));
+    expect(acceptedDetails[0].offset, const Offset(256.0, 74.0));
+    expect(acceptedDetails[1].offset, const Offset(256.0, 74.0));
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -1507,6 +1774,9 @@ void main() {
     await tester.pump();
 
     expect(accepted, equals(<int>[1, 1]));
+    expect(acceptedDetails, hasLength(2));
+    expect(acceptedDetails[0].offset, const Offset(256.0, 74.0));
+    expect(acceptedDetails[1].offset, const Offset(256.0, 74.0));
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -1603,6 +1873,9 @@ void main() {
             onAccept: (int data) {
               events.add('drop');
             },
+            onAcceptWithDetails: (DragTargetDetails<int> _) {
+              events.add('details');
+            },
           ),
         ],
       ),
@@ -1645,6 +1918,7 @@ void main() {
 
   testWidgets('Drag and drop - remove draggable', (WidgetTester tester) async {
     final List<int> accepted = <int>[];
+    final List<DragTargetDetails<int>> acceptedDetails = <DragTargetDetails<int>>[];
 
     await tester.pumpWidget(MaterialApp(
       home: Column(
@@ -1659,12 +1933,14 @@ void main() {
               return Container(height: 100.0, child: const Text('Target'));
             },
             onAccept: accepted.add,
+            onAcceptWithDetails: acceptedDetails.add,
           ),
         ],
       ),
     ));
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -1674,6 +1950,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -1686,12 +1963,14 @@ void main() {
               return Container(height: 100.0, child: const Text('Target'));
             },
             onAccept: accepted.add,
+            onAcceptWithDetails: acceptedDetails.add,
           ),
         ],
       ),
     ));
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsNothing);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -1701,6 +1980,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsNothing);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -1709,6 +1989,8 @@ void main() {
     await tester.pump();
 
     expect(accepted, equals(<int>[1]));
+    expect(acceptedDetails, hasLength(1));
+    expect(acceptedDetails.first.offset, const Offset(256.0, 26.0));
     expect(find.text('Source'), findsNothing);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -1740,6 +2022,7 @@ void main() {
 
   testWidgets('long-press draggable calls onDragEnd called if dropped on accepting target', (WidgetTester tester) async {
     final List<int> accepted = <int>[];
+    final List<DragTargetDetails<int>> acceptedDetails = <DragTargetDetails<int>>[];
     bool onDragEndCalled = false;
     DraggableDetails onDragEndDraggableDetails;
 
@@ -1760,12 +2043,14 @@ void main() {
               return Container(height: 100.0, child: const Text('Target'));
             },
             onAccept: accepted.add,
+            onAcceptWithDetails: acceptedDetails.add,
           ),
         ],
       ),
     ));
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -1776,6 +2061,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -1784,6 +2070,7 @@ void main() {
     await tester.pump(kLongPressTimeout);
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -1795,6 +2082,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -1804,7 +2092,11 @@ void main() {
     await tester.pump();
 
     final Offset droppedLocation = tester.getTopLeft(find.text('Target'));
+    final Offset expectedDropOffset = Offset(droppedLocation.dx, secondLocation.dy - firstLocation.dy);
+
     expect(accepted, equals(<int>[1]));
+    expect(acceptedDetails, hasLength(1));
+    expect(acceptedDetails.first.offset, expectedDropOffset);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -1812,13 +2104,12 @@ void main() {
     expect(onDragEndDraggableDetails, isNotNull);
     expect(onDragEndDraggableDetails.wasAccepted, isTrue);
     expect(onDragEndDraggableDetails.velocity, equals(Velocity.zero));
-    expect(onDragEndDraggableDetails.offset,
-        equals(
-            Offset(droppedLocation.dx, secondLocation.dy - firstLocation.dy)));
+    expect(onDragEndDraggableDetails.offset, equals(expectedDropOffset));
   });
 
   testWidgets('long-press draggable calls onDragCompleted called if dropped on accepting target', (WidgetTester tester) async {
     final List<int> accepted = <int>[];
+    final List<DragTargetDetails<int>> acceptedDetails = <DragTargetDetails<int>>[];
     bool onDragCompletedCalled = false;
 
     await tester.pumpWidget(MaterialApp(
@@ -1837,12 +2128,14 @@ void main() {
               return Container(height: 100.0, child: const Text('Target'));
             },
             onAccept: accepted.add,
+            onAcceptWithDetails: acceptedDetails.add,
           ),
         ],
       ),
     ));
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -1853,6 +2146,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -1861,6 +2155,7 @@ void main() {
     await tester.pump(kLongPressTimeout);
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -1872,6 +2167,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, isEmpty);
+    expect(acceptedDetails, isEmpty);
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsOneWidget);
     expect(find.text('Target'), findsOneWidget);
@@ -1881,6 +2177,7 @@ void main() {
     await tester.pump();
 
     expect(accepted, equals(<int>[1]));
+    expect(acceptedDetails.first.offset, const Offset(256.0, 74.0));
     expect(find.text('Source'), findsOneWidget);
     expect(find.text('Dragging'), findsNothing);
     expect(find.text('Target'), findsOneWidget);
@@ -2085,8 +2382,7 @@ void main() {
         ],
     ), ignoreTransform: true, ignoreRect: true));
     semantics.dispose();
-  });
-
+  }, skip: isBrowser);
 }
 
 Future<void> _testLongPressDraggableHapticFeedback({ WidgetTester tester, bool hapticFeedbackOnStart, int expectedHapticFeedbackCount }) async {
@@ -2133,6 +2429,7 @@ Future<void> _testLongPressDraggableHapticFeedback({ WidgetTester tester, bool h
 
 Future<void> _testChildAnchorFeedbackPosition({ WidgetTester tester, double top = 0.0, double left = 0.0 }) async {
   final List<int> accepted = <int>[];
+  final List<DragTargetDetails<int>> acceptedDetails = <DragTargetDetails<int>>[];
   int dragStartedCount = 0;
 
   await tester.pumpWidget(
@@ -2160,6 +2457,7 @@ Future<void> _testChildAnchorFeedbackPosition({ WidgetTester tester, double top 
                     return Container(height: 100.0, child: const Text('Target'));
                   },
                   onAccept: accepted.add,
+                  onAcceptWithDetails: acceptedDetails.add,
                 ),
               ],
             ),
@@ -2170,6 +2468,7 @@ Future<void> _testChildAnchorFeedbackPosition({ WidgetTester tester, double top 
   );
 
   expect(accepted, isEmpty);
+  expect(acceptedDetails, isEmpty);
   expect(find.text('Source'), findsOneWidget);
   expect(find.text('Dragging'), findsNothing);
   expect(find.text('Target'), findsOneWidget);
@@ -2180,6 +2479,7 @@ Future<void> _testChildAnchorFeedbackPosition({ WidgetTester tester, double top 
   await tester.pump();
 
   expect(accepted, isEmpty);
+  expect(acceptedDetails, isEmpty);
   expect(find.text('Source'), findsOneWidget);
   expect(find.text('Dragging'), findsOneWidget);
   expect(find.text('Target'), findsOneWidget);
@@ -2191,6 +2491,7 @@ Future<void> _testChildAnchorFeedbackPosition({ WidgetTester tester, double top 
   await tester.pump();
 
   expect(accepted, isEmpty);
+  expect(acceptedDetails, isEmpty);
   expect(find.text('Source'), findsOneWidget);
   expect(find.text('Dragging'), findsOneWidget);
   expect(find.text('Target'), findsOneWidget);
